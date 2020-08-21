@@ -35,9 +35,9 @@ public class ScannerConfig {
 	 * It loads all preferences.
 	 * @param preferences
 	 */
-	ScannerConfig(Preferences preferences) {
+	public ScannerConfig(Preferences preferences) {
 		this.preferences = preferences;
-		
+
 		maxThreads = preferences.getInt("maxThreads", Platform.CRIPPLED_WINDOWS ? 10 : 100);
 		threadDelay = preferences.getInt("threadDelay", 20);
 		scanDeadHosts = preferences.getBoolean("scanDeadHosts", false);
@@ -53,7 +53,7 @@ public class ScannerConfig {
 		notAvailableText = preferences.get("notAvailableText", Labels.getLabel("fetcher.value.notAvailable"));
 		notScannedText = preferences.get("notScannedText", Labels.getLabel("fetcher.value.notScanned"));
 	}
-		
+
 	/**
 	 * Stores all the internal properties to the storage media
 	 */

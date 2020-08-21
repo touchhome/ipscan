@@ -147,7 +147,7 @@ def winLauncher(def platform) {
         ant.fileset(file: "ext/win-launcher/launcher.exe")
         ant.fileset(file: "build/libs/${project.name}-${platform}-${version}.jar")
     }
-    ant.delete(file: "build/libs/${project.name}-${platform}-${version}.jar")
+    // ant.delete(file: "build/libs/${project.name}-${platform}-${version}.jar")
 }
 
 def deb(def platform, def arch, def moreDeps = '') {
@@ -165,10 +165,10 @@ def deb(def platform, def arch, def moreDeps = '') {
         ant.replacefilter(token: "DEPENDS", value: moreDeps)
     }
 
-    ant.exec(executable: "chmod", dir: dist, failonerror: true) {
+    ant.exec(executable: "chmod", dir: dist, failonerror: false) {
         ant.arg(line: "a+x usr/bin/ipscan usr/lib/ipscan/${project.name}-${platform}-${version}.jar")
     }
-    ant.exec(executable: 'fakeroot', dir: dist + '/..', failonerror: true) {
+    ant.exec(executable: 'fakeroot', dir: dist + '/..', failonerror: false) {
         ant.arg(line: "dpkg-deb -b deb ${project.name}_${version}_${arch}.deb")
     }
     ant.delete(dir: dist)
