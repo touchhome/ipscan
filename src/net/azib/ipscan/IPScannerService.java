@@ -1,6 +1,5 @@
 package net.azib.ipscan;
 
-import net.azib.ipscan.config.CommentsConfig;
 import net.azib.ipscan.config.Platform;
 import net.azib.ipscan.config.ScannerConfig;
 import net.azib.ipscan.core.*;
@@ -17,6 +16,7 @@ import java.security.Security;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -41,6 +41,10 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 
 	private ScannerDispatcherThread scannerThread;
 	private Feeder feeder;
+	private Runnable completeHandler = () -> {
+	};
+	private Consumer<StateMachine.Transition> startHandler = transition -> {
+	};
 
 	public IPScannerService(Fetcher... fetchers) {
 		Preferences preferences = Preferences.userRoot().node("ipscan");
@@ -55,13 +59,11 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 		this.fetcherRegistry = new FetcherRegistry(asList(
 				new IPFetcher(),
 				new PingFetcher(pingerRegistry, scannerConfig),
-				new PingTTLFetcher(pingerRegistry, scannerConfig),
 				new HostnameFetcher(),
 				new WebDetectFetcher(scannerConfig),
 				new HTTPSenderFetcher(scannerConfig),
 				new PacketLossFetcher(pingerRegistry, scannerConfig),
 				new NetBIOSInfoFetcher(),
-				new CommentFetcher(new CommentsConfig(preferences)),
 				new PortsFetcher(scannerConfig),
 				new MACVendorFetcher(macFetcher),
 				macFetcher), preferences, null);
@@ -134,6 +136,27 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 				scannerThread.start();
 				break;
 		}
+		switch (transition) {
+			case START:
+			case RESCAN:
+				startHandler.accept(transition);
+				break;
+			case COMPLETE:
+				completeHandler.run();
+				break;
+		}
+	}
+
+	public void setCompleteHandler(Runnable completeHandler) {
+		this.completeHandler = completeHandler;
+	}
+
+	public void setStartHandler(Consumer<StateMachine.Transition> startHandler) {
+		this.startHandler = startHandler;
+	}
+
+	public StateMachine getStateMachine() {
+		return stateMachine;
 	}
 
 	public final class IPScannerContext {
@@ -180,12 +203,9 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 		public final String hostname;
 		public final String address;
 		public final String ping;
-		public final String pingTTL;
 		public final String webDetectValue;
 		public final String httpSenderValue;
-		public final String packetLoss;
 		public final String netBIOSInfo;
-		public final String comment;
 		public final String ports;
 		public final String macVendorValue;
 		public final String ipFetcherValue;
@@ -195,18 +215,15 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 		public ResultValue(ScanningResult scanningResult, List<Integer> indexes) {
 			this.address = scanningResult.getAddress().toString();
 			this.type = scanningResult.getType();
-			this.ipFetcherValue = nullSafeValue(scanningResult, indexes.get(0));
-			this.ping = nullSafeValue(scanningResult, indexes.get(1));
-			this.pingTTL = nullSafeValue(scanningResult, indexes.get(2));
-			this.hostname = nullSafeValue(scanningResult, indexes.get(3));
-			this.webDetectValue = nullSafeValue(scanningResult, indexes.get(4));
-			this.httpSenderValue = nullSafeValue(scanningResult, indexes.get(5));
-			this.packetLoss = nullSafeValue(scanningResult, indexes.get(6));
-			this.netBIOSInfo = nullSafeValue(scanningResult, indexes.get(7));
-			this.comment = nullSafeValue(scanningResult, indexes.get(8));
-			this.ports = nullSafeValue(scanningResult, indexes.get(9));
-			this.macVendorValue = nullSafeValue(scanningResult, indexes.get(10));
-			this.macFetcherValue = nullSafeValue(scanningResult, indexes.get(11));
+			this.ipFetcherValue = nullSafeValue(scanningResult, indexes.get(Fetcher.IPFetcher.ordinal()));
+			this.ping = nullSafeValue(scanningResult, indexes.get(Fetcher.PingFetcher.ordinal()));
+			this.hostname = nullSafeValue(scanningResult, indexes.get(Fetcher.HostnameFetcher.ordinal()));
+			this.webDetectValue = nullSafeValue(scanningResult, indexes.get(Fetcher.WebDetectFetcher.ordinal()));
+			this.httpSenderValue = nullSafeValue(scanningResult, indexes.get(Fetcher.HTTPSenderFetcher.ordinal()));
+			this.netBIOSInfo = nullSafeValue(scanningResult, indexes.get(Fetcher.NetBIOSInfoFetcher.ordinal()));
+			this.ports = nullSafeValue(scanningResult, indexes.get(Fetcher.PortsFetcher.ordinal()));
+			this.macVendorValue = nullSafeValue(scanningResult, indexes.get(Fetcher.MACVendorFetcher.ordinal()));
+			this.macFetcherValue = nullSafeValue(scanningResult, indexes.get(Fetcher.MACFetcher.ordinal()));
 		}
 
 		private String nullSafeValue(ScanningResult scanningResult, int index) {
@@ -218,13 +235,10 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 	public enum Fetcher {
 		IPFetcher(net.azib.ipscan.fetchers.IPFetcher.ID),
 		PingFetcher(net.azib.ipscan.fetchers.PingFetcher.ID),
-		PingTTLFetcher(net.azib.ipscan.fetchers.PingTTLFetcher.ID),
 		HostnameFetcher(net.azib.ipscan.fetchers.HostnameFetcher.ID),
 		WebDetectFetcher("fetcher.webDetect"),
 		HTTPSenderFetcher("fetcher.httpSender"),
-		PacketLossFetcher(net.azib.ipscan.fetchers.PacketLossFetcher.ID),
 		NetBIOSInfoFetcher("fetcher.netbios"),
-		CommentFetcher(net.azib.ipscan.fetchers.CommentFetcher.ID),
 		PortsFetcher(net.azib.ipscan.fetchers.PortsFetcher.ID),
 		MACVendorFetcher(net.azib.ipscan.fetchers.MACVendorFetcher.ID),
 		MACFetcher(net.azib.ipscan.fetchers.MACFetcher.ID);
