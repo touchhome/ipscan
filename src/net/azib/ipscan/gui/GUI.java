@@ -39,10 +39,12 @@ public class GUI implements AutoCloseable {
 		}
 	}
 
-	public void showMainWindow(Injector injector) {
+	public void showMainWindow(Injector injector, boolean showStartupInfo) {
 		mainWindow = injector.require(MainWindow.class);
-
 		LOG.fine("Main window created: " + (System.currentTimeMillis() - startTime));
+
+		if (showStartupInfo)
+			injector.require(Startup.class).onStart();
 
 		while (!mainWindow.isDisposed()) {
 			try {
@@ -55,7 +57,10 @@ public class GUI implements AutoCloseable {
 
 				String localizedMessage = getLocalizedMessage(e);
 				showMessage(e instanceof UserErrorException ? SWT.ICON_WARNING : SWT.ICON_ERROR,
-						getLabel(e instanceof UserErrorException ? "text.userError" : "text.error"), localizedMessage);
+					getLabel(e instanceof UserErrorException ? "text.userError" : "text.error"), localizedMessage);
+
+				if (!(e instanceof UserErrorException) || e.getCause() != null)
+					new GoogleAnalytics().report(e);
 			}
 		}
 	}
@@ -68,7 +73,6 @@ public class GUI implements AutoCloseable {
 		messageBox.setText(title);
 		messageBox.setMessage(localizedMessage);
 		messageBox.open();
-		new GoogleAnalytics().report(localizedMessage, (Throwable) null);
 	}
 
 	@Override public void close() {
@@ -83,14 +87,10 @@ public class GUI implements AutoCloseable {
 		String localizedMessage;
 		try {
 			// try to load localized message
-			if (e instanceof UserErrorException) {
-				localizedMessage = e.getMessage();
-			}
-			else {
-				String exceptionClassName = e.getClass().getSimpleName();
-				String originalMessage = e.getMessage();
-				localizedMessage = getLabel("exception." + exceptionClassName + (originalMessage != null ? "." + originalMessage : ""));
-			}
+			String exceptionClassName = e.getClass().getSimpleName();
+			String originalMessage = e.getMessage();
+			localizedMessage = getLabel("exception." + exceptionClassName + (originalMessage != null ? "." + originalMessage : ""));
+
 			// add cause summary, if it exists
 			if (e.getCause() != null) {
 				localizedMessage += "\n\n" + e.getCause().toString();

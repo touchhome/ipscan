@@ -10,11 +10,12 @@ import org.eclipse.swt.events.TraverseListener;
 import org.eclipse.swt.widgets.*;
 
 import java.net.*;
-import java.util.Enumeration;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static java.net.NetworkInterface.getNetworkInterfaces;
+import static java.util.Comparator.comparing;
+import static net.azib.ipscan.util.InetAddressUtils.getNetworkInterfaces;
 
 /**
  * FeederActions
@@ -80,20 +81,21 @@ public class FeederActions {
 					MenuItem menuItem = (MenuItem) event.widget;
 					String address = (String) menuItem.getData();
 					ipText.setText(address.substring(0, address.lastIndexOf('/')));
-netmaskCombo.setText(address.substring(address.lastIndexOf('/')));
-//                        netmaskCombo.traverse(SWT.TRAVERSE_RETURN);
+					netmaskCombo.setText(address.substring(address.lastIndexOf('/')));
 					menuItem.getParent().dispose();
 				};
 
-				for (Enumeration<NetworkInterface> i = getNetworkInterfaces(); i.hasMoreElements(); ) {
-					NetworkInterface networkInterface = i.nextElement();
-					for (InterfaceAddress ifaddr : networkInterface.getInterfaceAddresses()) {
+				for (NetworkInterface networkInterface : getNetworkInterfaces()) {
+					List<InterfaceAddress> addresses = networkInterface.getInterfaceAddresses();
+					addresses.sort(comparing(i -> i.getAddress().getAddress().length));
+					for (InterfaceAddress ifaddr : addresses) {
 						if (ifaddr == null) continue;
                         InetAddress address = ifaddr.getAddress();
-                        if (address instanceof Inet4Address && !address.isLoopbackAddress()) {
+                        if (!address.isLoopbackAddress()) {
 							MenuItem menuItem = new MenuItem(popupMenu, 0);
-							menuItem.setText(networkInterface.getDisplayName() + ": " + address.getHostAddress());
-							menuItem.setData(address.getHostAddress() + "/" + ifaddr.getNetworkPrefixLength());
+							String ip = address.getHostAddress();
+							menuItem.setText(networkInterface.getDisplayName() + ": " + ip);
+							menuItem.setData(ip + "/" + ifaddr.getNetworkPrefixLength());
 							menuItem.addListener(SWT.Selection, menuItemListener);
 						}
 					}					
