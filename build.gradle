@@ -73,6 +73,29 @@ test {
     }
 }
 
+apply plugin: 'maven-publish'
+
+publishing {
+    publications {
+        myPublication(MavenPublication) {
+            from components.java
+            groupId 'org.touchhome'
+            artifactId 'angry-ipscan'
+            version '2.4.0'
+        }
+    }
+    repositories {
+        maven {
+            name = "MyRepo" //  optional target repository name
+            url = "https://touchhome.jfrog.io/artifactory/libs-release"
+            credentials {
+                username = '...'
+                password = '...'
+            }
+        }
+    }
+}
+
 def packageTask(String platform, def moreLibs = [], Closure doMore) {
     return tasks.create(platform, Jar) {
         dependsOn = ['classes']

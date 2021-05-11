@@ -46,7 +46,7 @@ public class IPScannerService implements ScanningProgressCallback, ScanningResul
 	private Consumer<StateMachine.Transition> startHandler = transition -> {
 	};
 
-	public IPScannerService(Fetcher... fetchers) {
+	public IPScannerService(Fetcher... fetchers) throws ClassNotFoundException {
 		Preferences preferences = Preferences.userRoot().node("ipscan");
 		this.scannerConfig = new ScannerConfig(preferences);
 		this.pingerRegistry = new PingerRegistry(scannerConfig);
