@@ -12,6 +12,7 @@ import net.azib.ipscan.feeders.RangeFeeder;
 import net.azib.ipscan.gui.actions.FeederActions;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.*;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.*;
@@ -56,12 +57,12 @@ public class RangeFeederGUI extends AbstractFeederGUI {
 
 		// the longest possible IP
         startIPText.setText("255.255.255.255xx");
-        int textWidth = startIPText.computeSize(SWT.DEFAULT, SWT.DEFAULT).x;
+        int textWidth = startIPText.computeSize(-1, -1).x;
         startIPText.setText("");
 		startIPText.setLayoutData(new GridData(textWidth, -1));
 		endIPText.setLayoutData(new GridData(textWidth, -1));
 		hostnameText.setLayoutData(new GridData(textWidth, -1));
-		netmaskCombo.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		netmaskCombo.setLayoutData(new GridData(textWidth, -1));
 
 		((GridData)endIPText.getLayoutData()).horizontalSpan = 2;
 		GridData ipUpData = new GridData(); ipUpData.horizontalSpan = 2;
@@ -111,6 +112,13 @@ public class RangeFeederGUI extends AbstractFeederGUI {
 		netmaskCombo.addListener(SWT.Traverse, netmaskSelectionListener);
 		netmaskCombo.setToolTipText(getLabel("feeder.range.netmask.tooltip"));
 
+		pack();
+		Rectangle comboBounds = netmaskCombo.getBounds();
+		Rectangle endIPBounds = endIPText.getBounds();
+		int width = endIPBounds.x + endIPBounds.width - comboBounds.x - 5;
+		if (Platform.WINDOWS) width -= 22; // TODO: remove width of down arrow, this number may change with updated SWT version
+		if (Platform.MAC_OS) width += 10;
+		((GridData) netmaskCombo.getLayoutData()).widthHint = width;
 		pack();
 
 		// do this stuff asynchronously (to show GUI faster)

@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build-all:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
 
     steps:
     - uses: actions/checkout@v1
@@ -30,7 +30,7 @@ jobs:
     - uses: actions/setup-java@v1
       with:
         java-version: '8'
-    - run: ./gradlew mac --info
+    - run: ./gradlew test mac --info
       env:
         APPLE_USER: ${{ secrets.APPLE_USER }}
         APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -49,4 +49,4 @@ jobs:
       with:
         java-version: '8'
         architecture: x86
-    - run: ./gradlew test win-installer
+    - run: ./gradlew test win-installer --info

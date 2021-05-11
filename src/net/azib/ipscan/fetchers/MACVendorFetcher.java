@@ -28,8 +28,7 @@ public class MACVendorFetcher extends AbstractFetcher {
 			String line;
 			while ((line = reader.readLine()) != null) {
 				if (line.isEmpty()) continue;
-				String prefix = line.substring(0, 2) + ':' + line.substring(2, 4) + ':' + line.substring(4, 6);
-				vendors.put(prefix, line.substring(6));
+				vendors.put(line.substring(0, 6), line.substring(6));
 			}
 		}
 		catch (IOException e) {
@@ -41,12 +40,13 @@ public class MACVendorFetcher extends AbstractFetcher {
 	public Object scan(ScanningSubject subject) {
 		String mac = (String)subject.getParameter(MACFetcher.ID);
 		if (mac == null) {
-			mac = macFetcher.scan(subject);
+			macFetcher.scan(subject);
+			mac = (String) subject.getParameter(MACFetcher.ID);
 		}
 		return mac != null ? findMACVendor(mac) : null;
 	}
 
 	String findMACVendor(String mac) {
-		return vendors.get(mac.substring(0, 8));
+		return vendors.get(mac.replace(":", "").substring(0, 6));
 	}
 }

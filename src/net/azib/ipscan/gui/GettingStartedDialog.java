@@ -9,7 +9,6 @@ import java.util.List;
 
 import static net.azib.ipscan.config.Config.getConfig;
 import static net.azib.ipscan.config.Labels.getLabel;
-import static org.eclipse.swt.events.SelectionListener.widgetSelectedAdapter;
 
 public class GettingStartedDialog extends AbstractModalDialog {
 	private int activePage;
@@ -22,16 +21,13 @@ public class GettingStartedDialog extends AbstractModalDialog {
 	public GettingStartedDialog() {
 		int num = 1;
 		try {
-			while (true) {
-				texts.add(getLabel("text.gettingStarted" + num++));
-			}
+			while (true) texts.add(getLabel("text.gettingStarted" + num++));
 		}
 		catch (Exception noMoreTexts) {}
 	}
 
-	GettingStartedDialog prependText(String text) {
+	void prependText(String text) {
 		texts.add(0, text);
-		return this;
 	}
 
 	@Override
@@ -57,7 +53,7 @@ public class GettingStartedDialog extends AbstractModalDialog {
 		allowReports.setText(getLabel("preferences.allowReports"));
 		allowReports.pack();
 		allowReports.setSelection(getConfig().allowReports);
-		allowReports.addSelectionListener(widgetSelectedAdapter(e -> getConfig().allowReports = allowReports.getSelection()));
+		allowReports.addListener(SWT.Selection, e -> getConfig().allowReports = allowReports.getSelection());
 
 		closeButton = new Button(shell, SWT.NONE);
 		closeButton.setText(getLabel("button.close"));
@@ -73,11 +69,8 @@ public class GettingStartedDialog extends AbstractModalDialog {
 		gettingStartedText.setBounds(leftBound, 10, shell.getClientArea().width - leftBound - 10, closeButton.getLocation().y - 20);
 		gettingStartedText.setBackground(shell.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
 		
-		closeButton.addListener(SWT.Selection, event -> {
-			shell.close();
-			shell.dispose();
-		});
-		nextButton.addListener(SWT.Selection, event -> displayActivePage());
+		closeButton.addListener(SWT.Selection, e -> close());
+		nextButton.addListener(SWT.Selection, e -> displayActivePage());
 
 		displayActivePage();
 	}
@@ -88,7 +81,8 @@ public class GettingStartedDialog extends AbstractModalDialog {
 	}
 
 	private void displayActivePage() {
-		gettingStartedText.setText(texts.get(activePage++));
+		if (activePage < texts.size())
+			gettingStartedText.setText(texts.get(activePage++));
 		
 		if (activePage >= texts.size()) {
 			nextButton.setEnabled(false);

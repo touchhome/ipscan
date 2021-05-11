@@ -9,11 +9,14 @@ import net.azib.ipscan.config.LoggerFactory;
 import net.azib.ipscan.core.ScanningSubject;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.InetSocketAddress;
+import java.net.NoRouteToHostException;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.logging.Logger;
 
 import static java.lang.Math.min;
-import static java.util.logging.Level.FINER;
+import static java.util.logging.Level.INFO;
 import static net.azib.ipscan.util.IOUtils.closeQuietly;
 
 /**
@@ -65,21 +68,20 @@ public class TCPPinger implements Pinger {
 			catch (IOException e) {
 				String msg = e.getMessage();
 
-				// RST should result in ConnectException, but not all Java implementations respect that
-				if (e instanceof ConnectException && !msg.contains(/*I*/"nvalid") || msg.contains(/*Connection*/"refused")) {
+				// RST should result in ConnectException, but on macOS ConnectionException can also come with e.g. "No route to host"
+				if (msg.contains(/*Connection*/"refused")) {
 					// we've got an RST packet from the host - it is alive
 					success(result, startTime);
 				}
-				else
-					// this should result in NoRouteToHostException or ConnectException, but not all Java implementation respect that
-					if (e instanceof NoRouteToHostException || msg.contains(/*No*/"route to host") || msg.contains(/*Host is*/"down") || msg.contains(/*Network*/"unreachable") || msg.contains(/*Socket*/"closed")) {
-						// host is down
-						break;
-					}
-					else {
-						// something unknown
-						LOG.log(FINER, subject.toString(), e);
-					}
+				// this should result in NoRouteToHostException or ConnectException, but not all Java implementation respect that
+				else if (e instanceof NoRouteToHostException || msg.contains(/*No*/"route to host") || msg.contains(/*Host is*/"down") || msg.contains(/*Network*/"unreachable") || msg.contains(/*Socket*/"closed") || msg.contains("Invalid argument")) {
+					// host is down
+					break;
+				}
+				else {
+					// something unknown
+					LOG.log(INFO, subject.toString(), e);
+				}
 			}
 			finally {
 				closeQuietly(socket);

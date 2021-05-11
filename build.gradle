@@ -14,7 +14,7 @@ plugins {
 
 def osName = System.getProperty("os.name")
 def is64 = System.getProperty("os.arch").contains("64")
-def platform = osName.contains("Linux") ? 'linux' + (is64 ? '64' : '') :
+def platform = osName.contains("Linux") ? 'linux' + (is64 ? '64' : '32') :
                osName.contains("Windows") ? 'win' + (is64 ? '64' : '32') :
                osName.contains("OS X") ? 'mac' : 'unknown'
 
@@ -37,29 +37,43 @@ repositories {
     jcenter()
 }
 
+configurations {
+    jna
+    any
+    linux64
+    win32.extendsFrom(jna)
+    win64.extendsFrom(jna)
+    mac
+
+    // compile and test with current platform's SWT and JNA
+    compileOnly.extendsFrom(getAt(platform), jna)
+    testImplementation.extendsFrom(compileOnly)
+    runtimeClasspath.extendsFrom(compileOnly)
+    all*.exclude module: 'org.eclipse.swt' // transitive dependency in Maven that fails
+}
+
 dependencies {
-    // compile with current platform's SWT, but bundle a different one for each binary
-    compileOnly files("lib/swt-${platform}.jar")
-    compileOnly files('lib/jna.jar')
+    def swtVersion = '3.115.100'
+    linux64 "org.eclipse.platform:org.eclipse.swt.gtk.linux.x86_64:${swtVersion}"
+    win64 "org.eclipse.platform:org.eclipse.swt.win32.win32.x86_64:${swtVersion}"
+    win32 "org.eclipse.platform:org.eclipse.swt.win32.win32.x86:3.108.0"
+    mac "org.eclipse.platform:org.eclipse.swt.cocoa.macosx.x86_64:${swtVersion}"
+    jna "net.java.dev.jna:jna:5.6.0"
     testCompile 'junit:junit:4.12'
     testCompile 'org.mockito:mockito-core:2.23.0'
 }
 
-configurations {
-    testImplementation.extendsFrom(compileOnly)
-    runtimeClasspath.extendsFrom(compileOnly)
-}
-
-compileJava.options.annotationProcessorGeneratedSourcesDirectory = new File('build/generated')
-
 test {
     if (platform == "mac") {
-        jvmArgs "-XstartOnFirstThread"
+        // jvmArgs "-XstartOnFirstThread"
         println("WARNING: tests that touch GUI will fail on Mac due to Cocoa restrictions and Gradle unable to run tests on main thread")
+        filter {
+            includeTestsMatching "net.azib.ipscan.core.net.*"
+        }
     }
 }
 
-def packageTask(String platform, def moreJars = [], def moreLibs = [], Closure doMore) {
+def packageTask(String platform, def moreLibs = [], Closure doMore) {
     return tasks.create(platform, Jar) {
         dependsOn = ['classes']
         manifest {
@@ -74,28 +88,39 @@ def packageTask(String platform, def moreJars = [], def moreLibs = [], Closure d
         }
         baseName = project.name + '-' + platform
         from {
-           (configurations.compile + files(platform == "any" ? [] : "lib/swt-${platform}.jar") + files(moreJars))
-                   .collect { it.isDirectory() ? it : zipTree(it) } +
-           moreLibs
+           (configurations.compile + configurations[platform]).collect {
+               it.isDirectory() ? it : zipTree(it)
+           } + moreLibs
         }
         exclude(
-           'version.txt',
            'images/**/*.svg',
+           'META-INF/ECLIPSE*',
+           'about_files/*',
+           'version.txt',
+           '.api_description',
+           'about.html',
+           'fragment.properties',
            'chrome.manifest',
-           'swt.js',
-           'swt.xpt',
-           // GTK stuff
+           // Linux/GTK
            'libswt-awt-gtk-*.so',
            'libswt-glx-gtk-*.so',
            'libswt-webkit-gtk-*.so',
-           // Win32 stuff
+           'webkitextensions*/*',
+           // Win32
            'swt-awt-*.dll',
            'swt-wgl-*.dll',
            'swt-gdip-*.dll',
-           'swt-xulrunner-*.dll',
            'swt-webkit-*.dll',
-           // Mac stuff
+           // Mac
            'libswt-awt-*.jnilib',
+            // JNA
+            'com/sun/jna/*/*.a',
+            'com/sun/jna/*/*.so',
+            'com/sun/jna/*/*.jnilib',
+            "com/sun/jna/win32-${platform == 'win32' ? 'x86-64' : platform == 'win64' ? 'x86' : '*'}/*.dll",
+            // Win-specific stuff
+            !platform.startsWith('win') ? 'net/azib/ipscan/core/net/Win*' : '',
+            !platform.startsWith('win') ? 'net/azib/ipscan/fetchers/Win*' : ''
         )
         with jar
 
@@ -117,12 +142,11 @@ def minimizeTask(String platform, Closure doMore) {
         libraryjars System.getProperty('java.home') + "/jmods/java.logging.jmod"
         libraryjars System.getProperty('java.home') + "/jmods/java.net.http.jmod"
         libraryjars System.getProperty('java.home') + "/jmods/java.prefs.jmod"
-        libraryjars 'lib/jna.jar'
         dontobfuscate
         dontoptimize
         dontnote '**'
-        configuration 'lib/swt.pro'
-        configuration 'lib/jna.pro'
+        configuration 'ext/swt.pro'
+        configuration 'ext/jna.pro'
 
         def keepClasses = [
             'net.azib.ipscan.**',
@@ -192,7 +216,7 @@ def rpm(def platform, def arch) {
     ant.delete(dir: dist)
 }
 
-packageTask('linux64', [], 'ext/rocksaw/lib/linux64/librocksaw.so') {
+packageTask('linux64', 'ext/rocksaw/lib/linux64/librocksaw.so') {
     deb('linux64', 'amd64')
     rpm('linux64', 'x86_64')
 }
@@ -201,11 +225,11 @@ packageTask('any') {
     deb('any', 'all', 'libswt-gtk-4-java, libswt-cairo-gtk-4-jni,')
 }
 
-packageTask('win32', 'lib/jna-win32.jar', 'ext/rocksaw/lib/rocksaw.dll') {
+packageTask('win32', 'ext/rocksaw/lib/rocksaw.dll') {
     winLauncher('win32')
 }
 
-packageTask('win64', 'lib/jna-win64.jar') {
+packageTask('win64') {
     winLauncher('win64')
 }
 

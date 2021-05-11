@@ -49,10 +49,12 @@ public class RangeFeeder extends AbstractFeeder {
 		catch (UnknownHostException e) {
 			throw new FeederException("malformedIP");
 		}
+		if (this.startIP.getClass() != this.endIP.getClass()) {
+			throw new FeederException("differentProtocols");
+		}
 		if (InetAddressUtils.greaterThan(this.startIP, this.endIP)) {
 			this.isReverse = true;
-			this.endIP = InetAddressUtils.decrement(InetAddressUtils
-					.decrement(this.endIP));
+			this.endIP = InetAddressUtils.decrement(InetAddressUtils.decrement(this.endIP));
 		}
 		initPercentageIncrement();
 		this.endIP = InetAddressUtils.increment(this.endIP);
@@ -62,9 +64,9 @@ public class RangeFeeder extends AbstractFeeder {
 	 * Initalizes fields, used for computation of percentage of completion.
 	 */
 	private void initPercentageIncrement() {
-		// Warning: IPv4 specific code! 
-		long rawEndIP = OctetConverter.octetsToInt(this.endIP.getAddress());
-		long rawStartIP = OctetConverter.octetsToInt(this.startIP.getAddress());
+		byte[] endAddress = this.endIP.getAddress();
+		long rawEndIP = OctetConverter.octetsToInt(endAddress, endAddress.length - 4);
+		long rawStartIP = OctetConverter.octetsToInt(this.startIP.getAddress(), endAddress.length - 4);
 		// make 32-bit unsigned values
 		rawEndIP = rawEndIP >= 0 ? rawEndIP : rawEndIP + Integer.MAX_VALUE;
 		rawStartIP = rawStartIP >= 0 ? rawStartIP : rawStartIP + Integer.MAX_VALUE;

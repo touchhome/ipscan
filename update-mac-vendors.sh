@@ -8,14 +8,14 @@ if [ "$(uname)" = "Darwin" ]; then
   SED_APP='gsed'
 fi
 
-curl 'http://standards-oui.ieee.org/oui.txt' |\
+curl 'http://standards-oui.ieee.org/oui/oui.txt' |\
 fgrep '(base 16)' | $SED_APP -r '
 	s/\r//g; s/     \(base 16\)\t\t//
 	s/,? ?(Inc)\.?$//I
 	s/(,|, | )(Ltd|CO,\.LTD|Limited|GmbH|LLC|A\/S|AB|AS|SAS|AG|KG|PLC|SRL|OY|Oy|BV|Nederland BV|SAN VE TIC)\.?$//Ig
 	s/(,|, | )(Co|Corp|Corporation|Company|Incorporated)\.?$//Ig
 	s/\(.+\)//
-	s/ (Electronics?|Technology|Technologies|Telecommunication|Communications?|Corporation|Systems|Solutions|International|Industry|Industries|Networks?|Holdings?) ?//Ig
+	s/ (Electronics?|Technology|Technologies|Telecommunication|Communications?|Corporation|Systems|Solutions|International|Industry|Industries|Networks?|Holdings?|Device$) ?//Ig
 	s/ (Registration Authority| MobilityCommunication)//
 	s/SAMSUNG ELECTRO[- ]MECHANICS/Samsung/
 ' | cut -c -42 | sort \

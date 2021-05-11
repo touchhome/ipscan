@@ -11,7 +11,7 @@ public abstract class MACFetcher extends AbstractFetcher {
 	public static final String ID = "fetcher.mac";
 	static final Pattern macAddressPattern = Pattern.compile("([a-fA-F0-9]{1,2}[-:]){5}[a-fA-F0-9]{1,2}");
 	static final Pattern leadingZeroesPattern = Pattern.compile("(?<=^|-|:)([A-F0-9])(?=-|:|$)");
-	String separator = ":";
+	String separator = getPreferences().get("separator", ":");
 
 	@Override public String getId() {
 		return ID;
@@ -21,7 +21,7 @@ public abstract class MACFetcher extends AbstractFetcher {
 		String mac = (String) subject.getParameter(ID);
 		if (mac == null) mac = resolveMAC(subject.getAddress());
 		subject.setParameter(ID, mac);
-		return mac;
+		return replaceSeparator(mac);
 	}
 
 	protected abstract String resolveMAC(InetAddress address);
@@ -30,12 +30,16 @@ public abstract class MACFetcher extends AbstractFetcher {
 		StringBuilder mac = new StringBuilder();
 		for (byte b : bytes) mac.append(String.format("%02X", b)).append(":");
 		if (mac.length() > 0) mac.deleteCharAt(mac.length()-1);
-		return mac.toString().replace(":", separator);
+		return mac.toString();
 	}
 
 	String extractMAC(String line) {
 		Matcher m = macAddressPattern.matcher(line);
-		return m.find() ? addLeadingZeroes(m.group().toUpperCase()).replace(":", separator) : null;
+		return m.find() ? addLeadingZeroes(m.group().toUpperCase()) : null;
+	}
+
+	String replaceSeparator(String mac) {
+		return mac != null ? mac.replace(":", separator) : null;
 	}
 
 	private static String addLeadingZeroes(String mac) {
